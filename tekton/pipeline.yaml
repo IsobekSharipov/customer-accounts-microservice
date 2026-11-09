@@ -1,0 +1,50 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: customer-accounts-ci
+spec:
+  description: Run the customer accounts microservice tests and check the Docker build configuration.
+  tasks:
+    - name: unit-tests
+      taskSpec:
+        steps:
+          - name: test
+            image: python:3.11-slim
+            script: |
+              #!/usr/bin/env sh
+              set -eu
+              python -m pip install --no-cache-dir Flask flask-talisman flask-cors
+              python - <<'PY'
+              import urllib.request
+              url = "https://raw.githubusercontent.com/IsobekSharipov/customer-accounts-microservice/main/"
+              for filename in ["service/__init__.py", "service/app.py", "tests/test_app.py"]:
+                  target = "/tmp/" + filename
+                  import os
+                  os.makedirs(os.path.dirname(target), exist_ok=True)
+                  urllib.request.urlretrieve(url + filename, target)
+              PY
+              cd /tmp
+              python -m unittest discover -s tests -v
+    - name: dockerfile-check
+      runAfter:
+        - unit-tests
+      taskSpec:
+        steps:
+          - name: check
+            image: python:3.11-slim
+            script: |
+              #!/usr/bin/env python3
+              import urllib.request
+              url = "https://raw.githubusercontent.com/IsobekSharipov/customer-accounts-microservice/main/Dockerfile"
+              data = urllib.request.urlopen(url, timeout=30).read().decode()
+              assert "EXPOSE 8080" in data, "Dockerfile must expose port 8080"
+              assert "service.app" in data, "Dockerfile must launch the microservice"
+              print("Dockerfile validation passed: port 8080 and application entrypoint present.")
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: customer-accounts-ci-run-
+spec:
+  pipelineRef:
+    name: customer-accounts-ci
