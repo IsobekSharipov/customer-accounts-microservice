@@ -1,0 +1,60 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: customer-accounts-deployer
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: customer-accounts-deployer
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    resourceNames: ["customer-accounts"]
+    verbs: ["get", "patch", "update"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: customer-accounts-deployer
+subjects:
+  - kind: ServiceAccount
+    name: customer-accounts-deployer
+    namespace: default
+roleRef:
+  kind: Role
+  name: customer-accounts-deployer
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: customer-accounts-cd
+spec:
+  description: Roll out the locally loaded customer-accounts Docker image to Kubernetes and verify readiness.
+  tasks:
+    - name: deploy-to-kubernetes
+      taskSpec:
+        steps:
+          - name: rollout
+            image: bitnami/kubectl:latest
+            script: |
+              #!/bin/sh
+              set -eu
+              kubectl set image deployment/customer-accounts customer-accounts=customer-accounts:local
+              kubectl rollout restart deployment/customer-accounts
+              kubectl rollout status deployment/customer-accounts --timeout=180s
+              kubectl get deployment customer-accounts
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: customer-accounts-cd-run-
+spec:
+  taskRunTemplate:
+    serviceAccountName: customer-accounts-deployer
+  pipelineRef:
+    name: customer-accounts-cd
