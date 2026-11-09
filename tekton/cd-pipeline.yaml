@@ -40,7 +40,7 @@ spec:
       taskSpec:
         steps:
           - name: rollout
-            image: bitnami/kubectl:latest
+            image: registry.k8s.io/kubectl:v1.32.2
             script: |
               #!/bin/sh
               set -eu
