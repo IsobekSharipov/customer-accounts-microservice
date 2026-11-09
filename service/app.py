@@ -2,10 +2,13 @@
 
 from flask import Flask, jsonify, request
 
+from service import configure_security
+
 
 def create_app():
     """Create the customer accounts application."""
     app = Flask(__name__)
+    configure_security(app)
     accounts = {}
     next_id = 1
 
