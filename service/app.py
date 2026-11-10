@@ -3,6 +3,7 @@
 from flask import Flask, jsonify, request
 
 from service import configure_security
+from service.models import Account
 
 
 def create_app():
@@ -35,7 +36,7 @@ def create_app():
             return jsonify(error="A nonempty name is required"), 400
         if not isinstance(email, str) or "@" not in email:
             return jsonify(error="A valid email is required"), 400
-        account = {"id": next_id, "name": name.strip(), "email": email.strip()}
+        account = Account(next_id, name.strip(), email.strip()).to_dict()
         accounts[next_id] = account
         next_id += 1
         return jsonify(account), 201
