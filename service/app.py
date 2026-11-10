@@ -53,6 +53,32 @@ def create_app():
             return jsonify(error="Account not found"), 404
         return jsonify(account), 200
 
+    @app.put("/accounts/<int:account_id>")
+    def update_account(account_id):
+        """Update an existing customer account."""
+        account = accounts.get(account_id)
+        if account is None:
+            return jsonify(error="Account not found"), 404
+        data = request.get_json(silent=True)
+        if not isinstance(data, dict):
+            return jsonify(error="A JSON object is required"), 400
+        name = data.get("name", account["name"])
+        email = data.get("email", account["email"])
+        if not isinstance(name, str) or not name.strip():
+            return jsonify(error="A nonempty name is required"), 400
+        if not isinstance(email, str) or "@" not in email:
+            return jsonify(error="A valid email is required"), 400
+        account.update(name=name.strip(), email=email.strip())
+        return jsonify(account), 200
+
+    @app.delete("/accounts/<int:account_id>")
+    def delete_account(account_id):
+        """Delete an existing customer account."""
+        account = accounts.pop(account_id, None)
+        if account is None:
+            return jsonify(error="Account not found"), 404
+        return "", 204
+
     return app
 
 
